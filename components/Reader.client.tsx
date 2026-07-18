@@ -127,7 +127,7 @@ export function Reader() {
   );
   const [activeIndex, setActiveIndex] = useState(-1);
   const [error, setError] = useState<string | null>(null);
-  const [rate, setRate] = useState(1);
+  const [rate, setRate] = useState(1.5);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const wordsRef = useRef<HTMLDivElement | null>(null);
