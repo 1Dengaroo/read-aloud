@@ -1,26 +1,183 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/*
+ * Theme files — each defines the full token contract under a
+ * [data-theme="<id>"] selector. See styles/themes/_contract.css.
+ */
+@import "../styles/themes/light.css";
+@import "../styles/themes/dark.css";
+@import "../styles/themes/slate.css";
+@import "../styles/themes/black.css";
+@import "../styles/themes/blush.css";
+@import "../styles/themes/lavender.css";
+
+/* Font selection — [data-font] on <html> resolves --font-active. */
+@import "../styles/fonts.css";
+
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-active);
   --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-display);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar-background);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* Per-surface bridge tokens */
+  --color-modal: var(--modal);
+  --color-modal-foreground: var(--modal-foreground);
+  --color-dropdown: var(--dropdown);
+  --color-dropdown-foreground: var(--dropdown-foreground);
+  --color-sheet: var(--sheet);
+  --color-sheet-foreground: var(--sheet-foreground);
+  --color-tabs: var(--tabs);
+  --color-input-surface: var(--input-surface);
+  --color-link: var(--link);
+  --color-chrome: var(--chrome);
+  --color-header-border: var(--header-border);
+  --color-bottom-nav-border: var(--bottom-nav-border);
+
+  /* Alerts */
+  --color-alert-info: var(--alert-info-bg);
+  --color-alert-info-foreground: var(--alert-info-foreground);
+  --color-alert-warning: var(--alert-warning-bg);
+  --color-alert-warning-foreground: var(--alert-warning-foreground);
+  --color-alert-success: var(--alert-success-bg);
+  --color-alert-success-foreground: var(--alert-success-foreground);
+
+  /* Signal badges */
+  --color-signal-job: var(--signal-job-bg);
+  --color-signal-job-foreground: var(--signal-job-text);
+  --color-signal-funding: var(--signal-funding-bg);
+  --color-signal-funding-foreground: var(--signal-funding-text);
+  --color-signal-news: var(--signal-news-bg);
+  --color-signal-news-foreground: var(--signal-news-text);
+  --color-signal-product: var(--signal-product-bg);
+  --color-signal-product-foreground: var(--signal-product-text);
+  --color-signal-other: var(--signal-other-bg);
+  --color-signal-other-foreground: var(--signal-other-text);
+
+  /*
+   * Semantic token bridge — exposes the oklch component tokens as
+   * Tailwind utilities (bg-surface-elevated, text-content-muted,
+   * border-edge-strong, bg-brand/10, …).
+   */
+  --color-brand: oklch(var(--accent-primary));
+  --color-brand-secondary: oklch(var(--accent-secondary));
+  --color-brand-tertiary: oklch(var(--accent-tertiary));
+  --color-surface-primary: oklch(var(--surface-primary));
+  --color-surface-secondary: oklch(var(--surface-secondary));
+  --color-surface-elevated: oklch(var(--surface-elevated));
+  --color-surface-overlay: oklch(var(--surface-overlay));
+  --color-edge-default: oklch(var(--border-default));
+  --color-edge-subtle: oklch(var(--border-subtle));
+  --color-edge-strong: oklch(var(--border-strong));
+  --color-content-primary: oklch(var(--text-primary));
+  --color-content-secondary: oklch(var(--text-secondary));
+  --color-content-muted: oklch(var(--text-muted));
+  --color-content-inverse: oklch(var(--text-inverse));
+  --color-highlight: oklch(var(--highlight));
+  --color-highlight-foreground: oklch(var(--highlight-foreground));
+
+  /* Theme-aware shadows — shadow-sm/md/lg follow the active theme */
+  --shadow-sm: var(--elevation-sm);
+  --shadow-md: var(--elevation-md);
+  --shadow-lg: var(--elevation-lg);
+
+  /* Theme-driven type scale */
+  --text-xs: var(--font-size-xs);
+  --text-sm: var(--font-size-sm);
+  --text-base: var(--font-size-base);
+
+  /* Shape radii — rounded-button / rounded-input / rounded-tag / rounded-card */
+  --radius-button: var(--button-radius);
+  --radius-input: var(--input-radius);
+  --radius-tag: var(--tag-radius);
+  --radius-card: var(--card-radius);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Section labels — size, tracking, and case are theme decisions. */
+@utility section-label {
+  font-size: var(--section-label-size);
+  letter-spacing: var(--section-label-tracking);
+  text-transform: var(--section-label-transform);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+  /*
+   * Tailwind v4 preflight leaves buttons with cursor: default —
+   * every enabled interactive control should read as clickable.
+   */
+  :where(
+    button,
+    [role="button"],
+    [role="option"],
+    [role="menuitem"],
+    [role="tab"],
+    [role="switch"],
+    [role="slider"],
+    a[href],
+    label[for],
+    select,
+    summary
+  ):not(:disabled, [data-disabled], [aria-disabled="true"]) {
+    cursor: pointer;
+  }
+  /*
+   * Cards consume all three border tokens; relative color syntax
+   * applies --card-border-opacity to the themed border color.
+   */
+  [data-slot="card"] {
+    border: var(--card-border);
+    border-width: var(--card-border-width);
+    border-color: oklch(from var(--border) l c h / var(--card-border-opacity));
+  }
 }

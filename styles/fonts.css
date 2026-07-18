@@ -1,0 +1,29 @@
+/*
+ * FONT SELECTION
+ * ==============
+ * Orthogonal to color themes. A [data-font="<id>"] attribute on <html>
+ * (set pre-paint by FontScript, persisted in localStorage under "font")
+ * picks the reading font by resolving --font-active, which globals.css
+ * bridges to Tailwind's font-sans. Headings use --font-display
+ * (Bricolage Grotesque) regardless of the selected reading font.
+ *
+ * Ids must stay in sync with lib/theme/font-registry.ts. The next/font
+ * variables (--font-default, --font-serif, --font-dyslexic) are
+ * provided by app/layout.tsx and already include generated fallbacks.
+ */
+:root,
+[data-font="default"] {
+  --font-active: var(--font-default);
+}
+
+[data-font="serif"] {
+  --font-active: var(--font-serif);
+}
+
+[data-font="system"] {
+  --font-active: ui-sans-serif, system-ui, sans-serif;
+}
+
+[data-font="dyslexic"] {
+  --font-active: var(--font-dyslexic);
+}

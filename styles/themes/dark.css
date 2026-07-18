@@ -1,0 +1,162 @@
+/* ============================================================
+   Theme: Dark
+   Mood:  Midnight — neutral charcoal, ultramarine blue
+          lifted for contrast. Not an inversion: surfaces rise
+   from near-black, borders brighten, shadows deepen.
+   ============================================================ */
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* ── Semantic tokens (oklch L C H) ── */
+
+  --accent-primary: 0.62 0.22 268;
+  --accent-secondary: 0.66 0.04 260;
+  --accent-tertiary: 0.68 0.16 280;
+
+  --surface-primary: 0.18 0.002 260;
+  --surface-secondary: 0.21 0.002 260;
+  --surface-elevated: 0.24 0.003 260;
+  --surface-overlay: 0.05 0 0;
+
+  --border-default: 0.32 0.004 260;
+  --border-subtle: 0.27 0.003 260;
+  --border-strong: 0.43 0.005 260;
+
+  --text-primary: 0.93 0.002 260;
+  --text-secondary: 0.75 0.003 260;
+  --text-muted: 0.57 0.004 260;
+  --text-inverse: 0.17 0.003 260;
+
+  --highlight: 0.83 0.15 100;
+  --highlight-foreground: 0.17 0.03 100;
+
+  /* ── Elevations ── */
+
+  --elevation-sm: 0 2px 10px rgba(0, 0, 0, 0.4), 0 1px 4px rgba(0, 0, 0, 0.3);
+  --elevation-md: 0 6px 22px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
+  --elevation-lg:
+    0 12px 40px rgba(0, 0, 0, 0.5), 0 4px 10px rgba(0, 0, 0, 0.35);
+
+  /* ── Density ── */
+
+  --density-card-py: 1.375rem;
+  --density-card-px: 1.375rem;
+  --density-card-gap: 1rem;
+  --density-section-gap: 0.75rem;
+
+  /* ── Font scale ── */
+
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+
+  /* ── Shape ── */
+
+  --input-radius: 0.5rem;
+  --input-border-width: 1px;
+  --button-radius: 9999px;
+
+  /* ── Tags ── */
+
+  --tag-radius: 9999px;
+  --tag-padding-x: 0.5rem;
+  --tag-padding-y: 0.1875rem;
+  --tag-font-size: 0.6875rem;
+
+  /* ── Section labels ── */
+
+  --section-label-size: 0.6875rem;
+  --section-label-tracking: 0.02em;
+  --section-label-transform: none;
+
+  /* ── Cards ── */
+
+  --card-radius: 8px;
+  --card-border: 1px solid var(--border);
+  --card-border-width: 1px;
+  --card-border-opacity: 0.6;
+  --card-shadow: var(--elevation-sm);
+  --card-hover-shadow: var(--elevation-md);
+  --card-hover-y: -1px;
+  --card-accent-bar-height: 0px;
+  --card-accent-bar-scale: 0;
+
+  /* ── Signal badges ── */
+
+  --signal-job-bg: hsl(232 70% 68% / 0.14);
+  --signal-job-text: hsl(232 85% 80%);
+  --signal-funding-bg: hsl(170 40% 50% / 0.14);
+  --signal-funding-text: hsl(170 42% 66%);
+  --signal-news-bg: hsl(36 55% 55% / 0.14);
+  --signal-news-text: hsl(36 58% 70%);
+  --signal-product-bg: hsl(268 50% 65% / 0.14);
+  --signal-product-text: hsl(268 55% 80%);
+  --signal-other-bg: hsl(240 12% 60% / 0.12);
+  --signal-other-text: hsl(240 12% 74%);
+
+  /* ── Chrome ── */
+
+  --chrome: #17171b;
+  --header-border: #2a2a31;
+  --header-backdrop: blur(12px);
+  --bottom-nav-border: #2a2a31;
+  --bottom-nav-backdrop: blur(12px);
+
+  /* ── shadcn bridge tokens ── */
+
+  --background: #121214;
+  --foreground: #e9e9ec;
+  --card: #1a1a1e;
+  --card-foreground: #e9e9ec;
+  --popover: #1f1f24;
+  --popover-foreground: #e9e9ec;
+  --modal: #1f1f24;
+  --modal-foreground: #e9e9ec;
+  --dropdown: #1f1f24;
+  --dropdown-foreground: #e9e9ec;
+  --sheet: #1a1a1e;
+  --sheet-foreground: #e9e9ec;
+  --tabs: #26262c;
+  --input-surface: #1a1a1e;
+  --primary: #5b6bff;
+  --primary-foreground: #ffffff;
+  --secondary: #232328;
+  --secondary-foreground: #d4d4da;
+  --muted: #1e1e23;
+  --muted-foreground: #9a9aa6;
+  --accent: #26262c;
+  --accent-foreground: #e9e9ec;
+  --destructive: hsl(0 72% 60%);
+  --destructive-foreground: #ffffff;
+  --link: #7c88ff;
+  --alert-info-bg: hsl(232 85% 65% / 0.12);
+  --alert-info-foreground: hsl(232 90% 80%);
+  --alert-warning-bg: hsl(40 70% 55% / 0.12);
+  --alert-warning-foreground: hsl(42 74% 72%);
+  --alert-success-bg: hsl(150 40% 50% / 0.12);
+  --alert-success-foreground: hsl(150 42% 68%);
+  --border: #2e2e35;
+  --input: #38383f;
+  --ring: #7c88ff;
+  --radius: 0.5rem;
+
+  /* ── Charts ── */
+
+  --chart-1: #5b6bff;
+  --chart-2: hsl(232 70% 74%);
+  --chart-3: hsl(190 60% 55%);
+  --chart-4: hsl(268 60% 70%);
+  --chart-5: hsl(28 80% 62%);
+
+  /* ── Sidebar ── */
+
+  --sidebar-background: #0d0d10;
+  --sidebar-foreground: #a2a2ae;
+  --sidebar-primary: #5b6bff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #232328;
+  --sidebar-accent-foreground: #e9e9ec;
+  --sidebar-border: #26262c;
+  --sidebar-ring: #7c88ff;
+}

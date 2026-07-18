@@ -1,0 +1,92 @@
+/*
+ * THEME TOKEN CONTRACT
+ * ====================
+ * Documentation only — this file is never imported.
+ *
+ * Every theme file in this directory must define EVERY token listed
+ * here inside a `[data-theme="<id>"]` block (plus `color-scheme`).
+ * A missing token silently inherits from the cascade, so the contract
+ * is exhaustive and non-optional.
+ *
+ * SEMANTIC TOKENS (oklch L C H components — oklch(var(--token) / a))
+ * ------------------------------------------------------------------
+ * --accent-primary / --accent-secondary / --accent-tertiary
+ * --surface-primary / -secondary / -elevated / -overlay
+ * --border-default / -subtle / -strong
+ * --text-primary / -secondary / -muted / -inverse
+ * --highlight / --highlight-foreground   Spoken-word highlight (yellow in every theme)
+ *
+ * ELEVATIONS (full CSS shadow values)
+ * -----------------------------------
+ * --elevation-sm / -md / -lg     → shadow-sm / shadow-md / shadow-lg
+ * Dark themes need 3-4x light-theme opacity to stay visible.
+ *
+ * DENSITY (spacing rhythm)
+ * ------------------------
+ * --density-card-py / --density-card-px   Card padding
+ * --density-card-gap                      Gap between card children
+ * --density-section-gap                   Gap between page sections
+ *
+ * FONT SCALE
+ * ----------
+ * --font-size-xs / -sm / -base   → text-xs / text-sm / text-base
+ *
+ * SHAPE
+ * -----
+ * --input-radius / --input-border-width   Inputs, textareas, selects
+ * --button-radius                         Buttons
+ *
+ * TAGS (Badge component)
+ * ----------------------
+ * --tag-radius / --tag-padding-x / --tag-padding-y / --tag-font-size
+ *
+ * SECTION LABELS (.section-label utility)
+ * ---------------------------------------
+ * --section-label-size / -tracking / -transform
+ *
+ * CARDS
+ * -----
+ * --card-radius / --card-border / --card-border-width /
+ * --card-border-opacity            Border (opacity via relative color)
+ * --card-shadow / --card-hover-shadow / --card-hover-y   Rest + hover
+ * --card-accent-bar-height / --card-accent-bar-scale     Top accent bar
+ *
+ * SIGNAL BADGES (paired bg/text, low-alpha bg)
+ * --------------------------------------------
+ * --signal-job-bg/-text  --signal-funding-bg/-text
+ * --signal-news-bg/-text --signal-product-bg/-text
+ * --signal-other-bg/-text
+ *
+ * CHROME (app shell)
+ * ------------------
+ * --chrome                        Header / shell surface
+ * --header-border / --header-backdrop
+ * --bottom-nav-border / --bottom-nav-backdrop
+ *
+ * SHADCN BRIDGE TOKENS (full colors)
+ * ----------------------------------
+ * --background / --foreground
+ * --card / --card-foreground        --popover / --popover-foreground
+ * --modal / --modal-foreground      --dropdown / --dropdown-foreground
+ * --sheet / --sheet-foreground      --tabs (active tab surface)
+ * --input-surface (input/textarea/select fill)
+ * --primary / --primary-foreground  --secondary / --secondary-foreground
+ * --muted / --muted-foreground      --accent / --accent-foreground
+ * --destructive / --destructive-foreground
+ * --link
+ * --alert-info-bg / --alert-info-foreground
+ * --alert-warning-bg / --alert-warning-foreground
+ * --alert-success-bg / --alert-success-foreground
+ * --border / --input / --ring / --radius
+ *
+ * CHARTS
+ * ------
+ * --chart-1 … --chart-5
+ *
+ * SIDEBAR
+ * -------
+ * --sidebar-background / --sidebar-foreground
+ * --sidebar-primary / --sidebar-primary-foreground
+ * --sidebar-accent / --sidebar-accent-foreground
+ * --sidebar-border / --sidebar-ring
+ */
