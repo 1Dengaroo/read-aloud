@@ -16,6 +16,12 @@
 /* Font selection — [data-font] on <html> resolves --font-active. */
 @import "../styles/fonts.css";
 
+/* Highlight style — [data-highlight] on <html> resolves the active tokens. */
+@import "../styles/highlights.css";
+
+/* Markdown presentation — display-only classes applied by lib/markdown.ts. */
+@import "../styles/markdown.css";
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -117,6 +123,11 @@
   --color-content-inverse: oklch(var(--text-inverse));
   --color-highlight: oklch(var(--highlight));
   --color-highlight-foreground: oklch(var(--highlight-foreground));
+
+  /* Active highlight mode — resolved by [data-highlight], see styles/highlights.css */
+  --color-hl-active: var(--highlight-active);
+  --color-hl-active-foreground: var(--highlight-active-foreground);
+  --color-hl-sentence: var(--highlight-sentence);
 
   /* Theme-aware shadows — shadow-sm/md/lg follow the active theme */
   --shadow-sm: var(--elevation-sm);

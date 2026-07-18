@@ -1,0 +1,81 @@
+/*
+ * HIGHLIGHT STYLE
+ * ===============
+ * Orthogonal to color themes. A [data-highlight="<id>"] attribute on
+ * <html> (set pre-paint by HighlightScript, persisted in localStorage
+ * under "highlight") picks how the spoken word is marked by resolving
+ * --highlight-active / --highlight-active-foreground and the sentence
+ * tint --highlight-sentence — all from the active theme's own tokens,
+ * so every mode adapts to every theme.
+ *
+ * Ids must stay in sync with lib/theme/highlight-registry.ts.
+ */
+:root,
+[data-highlight="yellow"] {
+  --highlight-active: oklch(var(--highlight));
+  --highlight-active-foreground: oklch(var(--highlight-foreground));
+  --highlight-sentence: oklch(var(--highlight) / 0.14);
+}
+
+[data-highlight="accent"] {
+  --highlight-active: oklch(var(--accent-primary));
+  --highlight-active-foreground: oklch(var(--text-inverse));
+  --highlight-sentence: oklch(var(--accent-primary) / 0.1);
+}
+
+[data-highlight="underline"] {
+  --highlight-active: oklch(var(--accent-primary));
+  --highlight-active-foreground: oklch(var(--text-primary));
+  --highlight-sentence: oklch(var(--accent-primary) / 0.08);
+}
+
+/*
+ * The sliding pill behind the active word. Reader.client.tsx positions
+ * it by setting --hl-x/--hl-y/--hl-w/--hl-h (content coordinates of the
+ * active word span) and --hl-duration (0ms when jumping lines or
+ * appearing fresh, so the pill only slides along a line, never
+ * diagonally across the page).
+ */
+.reading-pill {
+  transform: translate(var(--hl-x, 0px), var(--hl-y, 0px));
+  width: var(--hl-w, 0px);
+  height: var(--hl-h, 0px);
+  background-color: var(--highlight-active);
+  border-radius: calc(var(--radius) * 0.6);
+  opacity: 0;
+  transition:
+    transform var(--hl-duration, 150ms) ease-out,
+    width var(--hl-duration, 150ms) ease-out,
+    height var(--hl-duration, 150ms) ease-out,
+    opacity 120ms ease-out;
+}
+
+/*
+ * Words are seek targets — signal it on hover, and give the active word
+ * scroll margin so auto-follow never tucks it under the player dock.
+ */
+.reading-surface [data-mark] {
+  cursor: pointer;
+  border-radius: calc(var(--radius) * 0.4);
+  scroll-margin-block: 5rem 9rem;
+  /*
+   * Never break a line inside a spoken word (e.g. after a hyphen) —
+   * a fragmented span would need two highlight rects, and the pill
+   * draws exactly one.
+   */
+  white-space: nowrap;
+}
+
+.reading-surface [data-mark]:hover {
+  background-color: oklch(var(--accent-primary) / 0.1);
+}
+
+/* Underline mode: same geometry vars, rendered as a bar under the word. */
+[data-highlight="underline"] .reading-pill {
+  transform: translate(
+    var(--hl-x, 0px),
+    calc(var(--hl-y, 0px) + var(--hl-h, 0px) - 3px)
+  );
+  height: 3px;
+  border-radius: 1.5px;
+}

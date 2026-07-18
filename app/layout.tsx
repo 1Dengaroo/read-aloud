@@ -7,6 +7,7 @@ import {
   Newsreader,
 } from "next/font/google";
 import { FontScript } from "@/components/theme/FontScript";
+import { HighlightScript } from "@/components/theme/HighlightScript";
 import { ThemeProvider } from "@/components/theme/ThemeProvider.client";
 import "./globals.css";
 
@@ -57,6 +58,7 @@ export default function RootLayout({
     >
       <body className="flex min-h-full flex-col">
         <FontScript />
+        <HighlightScript />
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>

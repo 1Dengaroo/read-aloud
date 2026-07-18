@@ -1,0 +1,66 @@
+/*
+ * MARKDOWN PRESENTATION
+ * =====================
+ * Classes applied to sub-runs of reading segments by lib/markdown.ts.
+ * Display-only: the underlying text (syntax characters included) is
+ * what Polly speaks and what speech-mark offsets reference. Hiding
+ * syntax with display:none is safe — Polly never emits word marks for
+ * those characters, so no highlighted span depends on them.
+ */
+
+.md-syntax {
+  display: none;
+}
+
+.md-marker {
+  color: oklch(var(--text-muted));
+}
+
+.md-bold {
+  font-weight: 700;
+}
+
+.md-italic {
+  font-style: italic;
+}
+
+.md-strike {
+  text-decoration: line-through;
+}
+
+.md-code {
+  font-family: var(--font-geist-mono);
+  font-size: 0.875em;
+  background-color: oklch(var(--surface-secondary));
+  border-radius: 0.25rem;
+  padding: 0.0625rem 0.25rem;
+}
+
+/*
+ * Headings are inline runs inside the pre-wrap flow; a relative
+ * line-height lets their line box grow past the container's fixed
+ * reading leading instead of overlapping neighbors.
+ */
+.md-h1,
+.md-h2,
+.md-h3,
+.md-h4 {
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.md-h1 {
+  font-size: 1.5em;
+}
+
+.md-h2 {
+  font-size: 1.3em;
+}
+
+.md-h3 {
+  font-size: 1.15em;
+}
+
+.md-h4 {
+  font-size: 1.05em;
+}
