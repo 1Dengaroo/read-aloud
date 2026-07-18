@@ -9,15 +9,20 @@ A minimal read-aloud tool. Paste text, hear it spoken in Amazon Polly's Matthew 
 CLAUDE.md ← You are here
 app/page.tsx ← Main UI shell
 app/api/synthesize/route.ts ← Polly synthesis endpoint (audio + speech marks)
-components/Reader.client.tsx ← Text input, word spans, highlight logic, playback controls
+components/reader/ ← Reader (state + word spans), PlayerDock, Library dialog, Outline nav
 lib/types.ts ← TypeScript interfaces
 lib/polly.ts ← AWS Polly client + synthesis helpers
-lib/synthesis.ts ← Shared client/server helpers: guards, segments, mark search
+lib/synthesis.ts ← Shared client/server helpers: guards, chunking, segments, mark search
+lib/synthesize-client.ts ← Client chunked synthesis: fetch, decode, merge marks + audio
+lib/markdown.ts ← Display-only markdown annotations (decorations + outline headings)
+lib/playback.ts ← Default playback speed setting (localStorage)
 lib/library.ts ← IndexedDB saved-readings library (meta + audio stores)
 lib/theme/ ← Theme + font registries (ids, names, isDark flags)
 components/theme/ ← ThemeProvider, settings dialog, pre-paint font script
 styles/themes/ ← Token contract (\_contract.css) + one CSS file per theme
 styles/fonts.css ← [data-font] → --font-active resolution
+styles/highlights.css ← [data-highlight] modes + sliding-pill geometry + word-span rules
+styles/markdown.css ← Display-only markdown classes (md-\*)
 .env.local ← AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION
 
 ## Rules
@@ -54,3 +59,6 @@ styles/fonts.css ← [data-font] → --font-active resolution
 - `page.tsx` is a shell, composition only, never `'use client'`. Extract all logic into named components.
 - Polly speech marks and audio must be requested in separate API calls — they cannot be streamed together.
 - Word highlighting uses binary search against speech marks timestamps, polled from a `requestAnimationFrame` loop while playing — `timeupdate` fires only ~4×/sec and skips words.
+- Texts over 3000 chars are chunked client-side (`lib/synthesize-client.ts`): MP3 chunks concatenate into one Blob, and mark times are re-based with exact `decodeAudioData` durations — never estimate durations from the last mark.
+- Speech-mark offsets reference the raw pasted text. Never transform it before synthesis (markdown, cleanup) — render styling as char-range decorations instead (`lib/markdown.ts`).
+- A word span can fragment across lines (break after a hyphen). The pill measures the first `getClientRects()` fragment, and word spans use `white-space: nowrap` to avoid fragmenting at all.

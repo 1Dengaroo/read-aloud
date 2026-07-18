@@ -14,7 +14,9 @@
  * --surface-primary / -secondary / -elevated / -overlay
  * --border-default / -subtle / -strong
  * --text-primary / -secondary / -muted / -inverse
- * --highlight / --highlight-foreground   Spoken-word highlight (yellow in every theme)
+ * --highlight / --highlight-foreground   Spoken-word highlight (yellow in
+ *   every theme; consumed via the [data-highlight] modes in
+ *   styles/highlights.css, which also derive accent/underline modes)
  *
  * ELEVATIONS (full CSS shadow values)
  * -----------------------------------
