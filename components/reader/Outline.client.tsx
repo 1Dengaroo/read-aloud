@@ -27,7 +27,7 @@ export function Outline({ headings, activeHeading, onSelect }: OutlineProps) {
   return (
     <nav
       aria-label="Document outline"
-      className="animate-in fade-in fixed top-24 right-4 hidden max-h-[65vh] w-40 overflow-y-auto duration-500 lg:block xl:right-6 xl:w-56"
+      className="animate-in fade-in fixed top-24 right-4 hidden max-h-[65vh] w-48 overflow-y-auto duration-500 min-[1440px]:block"
     >
       <ul className="border-edge-subtle flex flex-col gap-0.5 border-l">
         {headings.map((heading, index) => (
@@ -37,7 +37,7 @@ export function Outline({ headings, activeHeading, onSelect }: OutlineProps) {
               onClick={() => onSelect(heading)}
               title={heading.title}
               className={cn(
-                "-ml-px block w-full truncate border-l-2 border-transparent py-1 pr-2 text-left text-xs transition-colors",
+                "focus-visible:ring-ring/50 -ml-px block w-full truncate rounded-sm border-l-2 border-transparent py-1 pr-2 text-left text-xs transition-colors outline-none focus-visible:ring-3",
                 INDENT_BY_LEVEL[Math.min(heading.level, 4)],
                 index === activeHeading
                   ? "border-brand text-content-primary font-medium"

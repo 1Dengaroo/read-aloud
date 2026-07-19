@@ -31,18 +31,60 @@
 .md-code {
   font-family: var(--font-geist-mono);
   font-size: 0.875em;
+}
+
+/*
+ * Code sections render as one wrapper element ([data-code], built in
+ * the Reader) — one continuous chip instead of per-fragment chips, and
+ * one unit for the highlight pill.
+ */
+.md-code-chip {
   background-color: oklch(var(--surface-secondary));
   border-radius: 0.25rem;
   padding: 0.0625rem 0.25rem;
+  /* A wrapped chip renders each line fragment as a complete chip. */
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+/*
+ * Code must wrap when it overflows, but only at real break points.
+ * Word spans normally carry white-space: nowrap, and the boundary
+ * between differently-white-spaced inline spans is itself a break
+ * opportunity — which split tokens like user_id (Polly marks "user"
+ * and "id" separately). Inside code the spans inherit the surface's
+ * pre-wrap instead, so the text flows as one run: no break inside
+ * user_id, wrapping at spaces, and — via break-word — anywhere as a
+ * last resort when a token is longer than the whole line.
+ */
+.md-code-chip,
+.md-code-block {
+  overflow-wrap: break-word;
+}
+
+.md-code-chip [data-mark],
+.md-code-block [data-mark] {
+  white-space: inherit;
+}
+
+.md-code-block {
+  display: block;
+  background-color: oklch(var(--surface-secondary));
+  border-radius: 0.5rem;
+  padding: 0.625rem 1rem;
+  margin-block: 0.5rem;
+  overflow-x: auto;
+  line-height: 1.6;
 }
 
 /*
  * The sliding pill paints behind span backgrounds (-z-10), so the code
- * chip would mask it and leave the active word's highlight-foreground
- * text on the chip's own surface — unreadable in dark themes. While a
- * code word is being spoken, drop the chip so the pill shows through.
+ * surface would mask it and leave the highlight-foreground text on the
+ * chip's own background — unreadable in dark themes. While a section is
+ * being spoken, drop its surface so the pill shows through.
  */
-[data-mark][data-active] .md-code {
+.md-code-chip[data-active],
+.md-code-block[data-active] {
   background-color: transparent;
 }
 

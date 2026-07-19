@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { formatClock } from "@/lib/format";
 import type { PlaybackStatus, SynthesisProgress } from "@/lib/types";
 
 interface PlayerDockProps {
@@ -27,12 +28,6 @@ interface PlayerDockProps {
   onCycleRate: () => void;
   onSave: () => void;
   onEdit: () => void;
-}
-
-function formatTime(totalSeconds: number): string {
-  const seconds = Math.max(0, Math.floor(totalSeconds));
-  const minutes = Math.floor(seconds / 60);
-  return `${minutes}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
 /**
@@ -68,7 +63,7 @@ export function PlayerDock({
               size="lg"
               onClick={onListen}
               disabled={!canListen || loading}
-              className="rounded-full px-7"
+              className="px-7"
             >
               {loading ? <Loader2 className="animate-spin" /> : <Play />}
               {loading
@@ -94,12 +89,11 @@ export function PlayerDock({
               size="icon-lg"
               onClick={onPlayPause}
               aria-label={status === "playing" ? "Pause" : "Play"}
-              className="rounded-full"
             >
               {status === "playing" ? <Pause /> : <Play />}
             </Button>
             <span className="text-content-secondary pl-1 text-xs tabular-nums">
-              {formatTime(playheadSec)}
+              {formatClock(playheadSec)}
             </span>
             <Slider
               value={[Math.min(playheadSec, durationSec)]}
@@ -111,14 +105,14 @@ export function PlayerDock({
               className="w-32 sm:w-56"
             />
             <span className="text-content-muted pr-1 text-xs tabular-nums">
-              {formatTime(durationSec)}
+              {formatClock(durationSec)}
             </span>
             <Button
               variant="ghost"
               size="sm"
               onClick={onCycleRate}
               aria-label={`Playback speed ${rate}×, click to change`}
-              className="w-12 rounded-full px-0 tabular-nums"
+              className="w-12 px-0 tabular-nums"
             >
               {rate}×
             </Button>
@@ -128,7 +122,6 @@ export function PlayerDock({
               onClick={onSave}
               disabled={isSaved}
               aria-label={isSaved ? "Saved" : "Save reading"}
-              className="rounded-full"
             >
               {isSaved ? <BookmarkCheck /> : <BookmarkPlus />}
             </Button>
@@ -137,7 +130,6 @@ export function PlayerDock({
               size="icon-sm"
               onClick={onEdit}
               aria-label="Edit text"
-              className="rounded-full"
             >
               <PencilLine />
             </Button>

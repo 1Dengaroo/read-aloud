@@ -64,20 +64,46 @@ function ThemePreviewSkeleton({ themeId }: { themeId: string }) {
 const emptySubscribe = () => () => {};
 
 /*
- * FontScript sets data-font before hydration, so on the client the
- * attribute is the source of truth for the initial state.
+ * Font and highlight share one persistence scheme: a data attribute on
+ * <html> (set pre-paint by FontScript/HighlightScript, so on the client
+ * the attribute is the source of truth for the initial state) plus a
+ * localStorage entry under the same key.
  */
-function readFont(): string {
-  if (typeof document === "undefined") return defaultFontId;
-  const id = document.documentElement.dataset.font;
-  return isFontId(id) ? id : defaultFontId;
+function readDataSetting(
+  key: "font" | "highlight",
+  isValid: (id: string | undefined) => boolean,
+  fallback: string,
+): string {
+  if (typeof document === "undefined") return fallback;
+  const id = document.documentElement.dataset[key];
+  return id !== undefined && isValid(id) ? id : fallback;
 }
 
-/* HighlightScript sets data-highlight pre-paint, same as the font. */
-function readHighlight(): string {
-  if (typeof document === "undefined") return defaultHighlightId;
-  const id = document.documentElement.dataset.highlight;
-  return isHighlightId(id) ? id : defaultHighlightId;
+function applyDataSetting(
+  key: "font" | "highlight",
+  id: string,
+  set: (id: string) => void,
+): void {
+  document.documentElement.dataset[key] = id;
+  localStorage.setItem(key, id);
+  set(id);
+}
+
+function SettingsSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section>
+      <h3 className="section-label text-content-secondary mb-3 font-medium">
+        {title}
+      </h3>
+      {children}
+    </section>
+  );
 }
 
 /*
@@ -104,8 +130,12 @@ function HighlightSwatch({ highlightId }: { highlightId: string }) {
 
 export function ThemeSettings() {
   const { theme, setTheme } = useTheme();
-  const [fontId, setFontId] = useState(readFont);
-  const [highlightId, setHighlightId] = useState(readHighlight);
+  const [fontId, setFontId] = useState(() =>
+    readDataSetting("font", isFontId, defaultFontId),
+  );
+  const [highlightId, setHighlightId] = useState(() =>
+    readDataSetting("highlight", isHighlightId, defaultHighlightId),
+  );
   const [playbackRate, setPlaybackRate] = useState(readDefaultPlaybackRate);
 
   const applyPlaybackRate = (value: string) => {
@@ -115,17 +145,10 @@ export function ThemeSettings() {
     setPlaybackRate(rate);
   };
 
-  const applyFont = (id: string) => {
-    document.documentElement.dataset.font = id;
-    localStorage.setItem("font", id);
-    setFontId(id);
-  };
+  const applyFont = (id: string) => applyDataSetting("font", id, setFontId);
 
-  const applyHighlight = (id: string) => {
-    document.documentElement.dataset.highlight = id;
-    localStorage.setItem("highlight", id);
-    setHighlightId(id);
-  };
+  const applyHighlight = (id: string) =>
+    applyDataSetting("highlight", id, setHighlightId);
   // True after hydration only — the server render must not mark a theme
   // selected, since it can't know the persisted choice.
   const mounted = useSyncExternalStore(
@@ -143,7 +166,7 @@ export function ThemeSettings() {
           aria-label="Open settings"
           className="text-muted-foreground"
         >
-          <Settings className="size-4" />
+          <Settings />
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
@@ -154,10 +177,7 @@ export function ThemeSettings() {
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-6">
-          <section>
-            <h3 className="section-label text-content-secondary mb-3 font-medium">
-              Theme
-            </h3>
+          <SettingsSection title="Theme">
             <div className="grid grid-cols-3 gap-2">
               {themes.map((t) => (
                 <Button
@@ -178,11 +198,8 @@ export function ThemeSettings() {
                 </Button>
               ))}
             </div>
-          </section>
-          <section>
-            <h3 className="section-label text-content-secondary mb-3 font-medium">
-              Highlight
-            </h3>
+          </SettingsSection>
+          <SettingsSection title="Highlight">
             <Select value={highlightId} onValueChange={applyHighlight}>
               <SelectTrigger className="w-full" aria-label="Reading highlight">
                 <SelectValue />
@@ -196,11 +213,8 @@ export function ThemeSettings() {
                 ))}
               </SelectContent>
             </Select>
-          </section>
-          <section>
-            <h3 className="section-label text-content-secondary mb-3 font-medium">
-              Playback speed
-            </h3>
+          </SettingsSection>
+          <SettingsSection title="Playback speed">
             <Select
               value={String(playbackRate)}
               onValueChange={applyPlaybackRate}
@@ -223,11 +237,8 @@ export function ThemeSettings() {
                 ))}
               </SelectContent>
             </Select>
-          </section>
-          <section>
-            <h3 className="section-label text-content-secondary mb-3 font-medium">
-              Font
-            </h3>
+          </SettingsSection>
+          <SettingsSection title="Font">
             <Select value={fontId} onValueChange={applyFont}>
               <SelectTrigger className="w-full" aria-label="Reading font">
                 <SelectValue />
@@ -244,7 +255,7 @@ export function ThemeSettings() {
                 ))}
               </SelectContent>
             </Select>
-          </section>
+          </SettingsSection>
         </div>
       </DialogContent>
     </Dialog>

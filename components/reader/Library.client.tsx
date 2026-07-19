@@ -21,6 +21,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { formatClock, formatSavedAt } from "@/lib/format";
 import type { SavedReadingMeta, SpeechMark } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -32,18 +33,8 @@ interface LibraryProps {
   onDelete: (id: string) => void;
 }
 
-function formatSavedAt(createdAt: number): string {
-  return new Date(createdAt).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-  });
-}
-
 function formatDuration(marks: SpeechMark[]): string {
-  const totalSeconds = Math.round((marks.at(-1)?.time ?? 0) / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+  return formatClock((marks.at(-1)?.time ?? 0) / 1000);
 }
 
 /** Saved-readings library — a header icon that opens a picker dialog. */
@@ -68,7 +59,7 @@ export function Library({
             aria-label="Open library"
             className="text-muted-foreground"
           >
-            <BookOpen className="size-4" />
+            <BookOpen />
           </Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-md">

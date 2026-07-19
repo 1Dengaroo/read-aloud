@@ -1,296 +1,70 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useMemo, useRef, useState } from "react";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import { Library } from "@/components/reader/Library.client";
 import { Outline } from "@/components/reader/Outline.client";
 import { PlayerDock } from "@/components/reader/PlayerDock.client";
+import { ReadingSurface } from "@/components/reader/ReadingSurface.client";
+import { wordElement } from "@/components/reader/reading-dom";
+import { useFollowPlayhead } from "@/components/reader/useFollowPlayhead";
+import { usePlayback } from "@/components/reader/usePlayback";
+import { useReaderShortcuts } from "@/components/reader/useReaderShortcuts";
+import { useSavedReadings } from "@/components/reader/useSavedReadings";
 import { ThemeSettings } from "@/components/theme/ThemeSettings.client";
+import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { listenEstimate } from "@/lib/format";
+import { loadAudio } from "@/lib/library";
 import {
-  deleteReading,
-  listReadings,
-  loadAudio,
-  requestPersistentStorage,
-  saveReading,
-} from "@/lib/library";
-import { annotateMarkdown, buildSegmentRuns } from "@/lib/markdown";
-import {
-  PLAYBACK_RATES,
-  PLAYBACK_RATE_EVENT,
-  readDefaultPlaybackRate,
-} from "@/lib/playback";
-import {
-  MAX_TEXT_LENGTH,
-  buildSegments,
-  buildSentenceByMark,
-  findActiveMark,
-} from "@/lib/synthesis";
+  activeHeadingIndex,
+  annotateMarkdown,
+  buildOutline,
+} from "@/lib/markdown";
+import { MAX_TEXT_LENGTH, buildSegments } from "@/lib/synthesis";
 import { synthesizeReading } from "@/lib/synthesize-client";
 import type {
+  ActiveReading,
   OutlineHeading,
-  PlaybackStatus,
   SavedReadingMeta,
-  SpeechMark,
-  StyledRun,
   SynthesisProgress,
-  WordSegment,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-interface Synthesis {
-  text: string;
-  audio: Blob;
-  /** Object URL for `audio` — revoked when the synthesis is replaced. */
-  audioSrc: string;
-  marks: SpeechMark[];
-  segments: WordSegment[];
-  /** Exact decoded duration; null for library loads (metadata fills in). */
-  durationMs: number | null;
-  /** Library id when this synthesis is saved, null otherwise. */
-  sourceId: string | null;
-}
-
-const AVERAGE_WORDS_PER_MINUTE = 170;
-
-/*
- * Rejections (e.g. an autoplay block) surface as a paused UI, not a
- * console error — the user can simply press Play.
+/**
+ * The reading room's conductor: owns the edit/read mode, the current
+ * reading, and the error banner, and wires the feature hooks (playback,
+ * saved readings, follow, shortcuts) to the presentational components.
+ * The heavy lifting lives in those hooks and in lib/.
  */
-function play(audio: HTMLAudioElement) {
-  audio.play().catch(() => undefined);
-}
-
-/** Quantize to quarter seconds so scrubber re-renders stay ~4/s. */
-function quantize(seconds: number): number {
-  return Math.floor(seconds * 4) / 4;
-}
-
-function listenEstimate(wordCount: number): string {
-  const minutes = Math.round(wordCount / AVERAGE_WORDS_PER_MINUTE);
-  return minutes < 1 ? "under a minute" : `~${minutes} min listen`;
-}
-
-/** A segment's children: plain text, or markdown-styled sub-runs. */
-function renderSegmentContent(
-  runs: StyledRun[] | null | undefined,
-  text: string,
-) {
-  if (!runs) return text;
-  return runs.map((run, index) => (
-    <span key={index} className={run.className ?? undefined}>
-      {run.text}
-    </span>
-  ));
-}
-
 export function Reader() {
   const [text, setText] = useState("");
   const [mode, setMode] = useState<"edit" | "read">("edit");
-  const [status, setStatus] = useState<PlaybackStatus>("idle");
+  const [reading, setReading] = useState<ActiveReading | null>(null);
   const [progress, setProgress] = useState<SynthesisProgress | null>(null);
-  const [synthesis, setSynthesis] = useState<Synthesis | null>(null);
-  const [saved, setSaved] = useState<SavedReadingMeta[]>([]);
-  const [activeIndex, setActiveIndex] = useState(-1);
-  const [playhead, setPlayhead] = useState(0);
-  const [durationSec, setDurationSec] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [rate, setRate] = useState(readDefaultPlaybackRate);
 
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const wordsRef = useRef<HTMLDivElement | null>(null);
-  const pillRef = useRef<HTMLDivElement | null>(null);
-  const pillTopRef = useRef<number | null>(null);
-  const pillIndexRef = useRef(-1);
-  /** Set before an outline jump so its block:"start" scroll wins. */
-  const suppressAutoScrollRef = useRef(false);
-
-  const sentenceByMark = useMemo(
-    () => (synthesis ? buildSentenceByMark(synthesis.segments) : []),
-    [synthesis],
+  const playback = usePlayback();
+  const library = useSavedReadings();
+  const follow = useFollowPlayhead(
+    wordsRef,
+    playback.activeIndex,
+    mode === "read",
   );
-  const activeSentence = activeIndex >= 0 ? sentenceByMark[activeIndex] : -1;
 
   const markdown = useMemo(
-    () => (synthesis ? annotateMarkdown(synthesis.text) : null),
-    [synthesis],
+    () => (reading ? annotateMarkdown(reading.text) : null),
+    [reading],
   );
-  const segmentRuns = useMemo(
+  const outline = useMemo(
     () =>
-      synthesis && markdown
-        ? buildSegmentRuns(synthesis.segments, markdown.decorations)
+      reading && markdown
+        ? buildOutline(reading.segments, markdown.headings)
         : [],
-    [synthesis, markdown],
+    [reading, markdown],
   );
-  // Each heading resolved to the first spoken word at/after its content.
-  const outline = useMemo((): OutlineHeading[] => {
-    if (!synthesis || !markdown) return [];
-    const entries: OutlineHeading[] = [];
-    let segIndex = 0;
-    for (const heading of markdown.headings) {
-      while (
-        segIndex < synthesis.segments.length &&
-        (synthesis.segments[segIndex].markIndex === null ||
-          synthesis.segments[segIndex].charStart < heading.charStart)
-      ) {
-        segIndex++;
-      }
-      const markIndex = synthesis.segments[segIndex]?.markIndex;
-      if (typeof markIndex === "number")
-        entries.push({ ...heading, markIndex });
-    }
-    return entries;
-  }, [synthesis, markdown]);
-
-  let activeHeading = -1;
-  for (let index = 0; index < outline.length; index++) {
-    if (outline[index].markIndex <= activeIndex) activeHeading = index;
-    else break;
-  }
-
-  /*
-   * Move the sliding pill to the word span for `markIndex` by setting the
-   * geometry vars styles/highlights.css transitions. Sliding only happens
-   * along a line — a line jump, fresh appearance, or reflow (`snap`)
-   * repositions instantly so the pill never sweeps diagonally.
-   */
-  const positionPill = useCallback((markIndex: number, snap: boolean) => {
-    const pill = pillRef.current;
-    const container = wordsRef.current;
-    if (!pill || !container) return;
-    if (markIndex < 0) {
-      pill.style.opacity = "0";
-      pillIndexRef.current = -1;
-      return;
-    }
-    const word = container.querySelector(`[data-mark="${markIndex}"]`);
-    if (!(word instanceof HTMLElement)) return;
-    /*
-     * A word span can fragment across lines (the browser may break after
-     * a hyphen), and the offset* box then spans both fragments — the pill
-     * would stretch to the right and cover two lines. Measure the first
-     * line fragment instead, in container-relative coordinates.
-     */
-    const rect = word.getClientRects()[0];
-    if (!rect) return;
-    const containerRect = container.getBoundingClientRect();
-    const x = rect.left - containerRect.left;
-    const y = rect.top - containerRect.top;
-    const instant =
-      snap || pillIndexRef.current === -1 || y !== pillTopRef.current;
-    pill.style.setProperty("--hl-duration", instant ? "0ms" : "150ms");
-    pill.style.setProperty("--hl-x", `${x}px`);
-    pill.style.setProperty("--hl-y", `${y}px`);
-    pill.style.setProperty("--hl-w", `${rect.width}px`);
-    pill.style.setProperty("--hl-h", `${rect.height}px`);
-    pill.style.opacity = "1";
-    pillTopRef.current = y;
-    pillIndexRef.current = markIndex;
-  }, []);
-
-  useLayoutEffect(() => {
-    positionPill(activeIndex, false);
-  }, [activeIndex, synthesis, mode, positionPill]);
-
-  useEffect(() => {
-    if (mode !== "read") return;
-    const container = wordsRef.current;
-    if (!container) return;
-    const observer = new ResizeObserver(() =>
-      positionPill(pillIndexRef.current, true),
-    );
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, [mode, positionPill]);
-
-  useEffect(() => {
-    listReadings()
-      .then(setSaved)
-      .catch(() => setSaved([]));
-    const cleanup = () => audioRef.current?.pause();
-    return cleanup;
-  }, []);
-
-  useEffect(() => {
-    if (audioRef.current) audioRef.current.playbackRate = rate;
-  }, [rate]);
-
-  // Changing the default speed in Settings applies to this session too.
-  useEffect(() => {
-    const onRateChange = () => setRate(readDefaultPlaybackRate());
-    window.addEventListener(PLAYBACK_RATE_EVENT, onRateChange);
-    return () => window.removeEventListener(PLAYBACK_RATE_EVENT, onRateChange);
-  }, []);
-
-  useEffect(() => {
-    if (activeIndex < 0) return;
-    if (suppressAutoScrollRef.current) {
-      suppressAutoScrollRef.current = false;
-      return;
-    }
-    const word = wordsRef.current?.querySelector(
-      `[data-mark="${activeIndex}"]`,
-    );
-    word?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  }, [activeIndex]);
-
-  const replaceSynthesis = (next: Synthesis) => {
-    if (synthesis) URL.revokeObjectURL(synthesis.audioSrc);
-    setSynthesis(next);
-    setActiveIndex(-1);
-    setPlayhead(0);
-    // Library loads lack an exact duration until audio metadata arrives —
-    // the last mark's time is close enough for the scrubber meanwhile.
-    setDurationSec((next.durationMs ?? next.marks.at(-1)?.time ?? 0) / 1000);
-  };
-
-  const attachAudio = (next: Synthesis): HTMLAudioElement => {
-    audioRef.current?.pause();
-    const audio = new Audio(next.audioSrc);
-    audio.playbackRate = rate;
-    const syncPlayhead = () => setPlayhead(quantize(audio.currentTime));
-    // timeupdate only fires ~4x/sec — too coarse to catch every word.
-    // Poll the playhead each animation frame while playing instead.
-    let frame = 0;
-    const step = () => {
-      setActiveIndex(findActiveMark(next.marks, audio.currentTime * 1000));
-      syncPlayhead();
-      frame = requestAnimationFrame(step);
-    };
-    audio.addEventListener("play", () => {
-      setStatus("playing");
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(step);
-    });
-    audio.addEventListener("pause", () => {
-      setStatus("paused");
-      cancelAnimationFrame(frame);
-    });
-    audio.addEventListener("seeked", () => {
-      syncPlayhead();
-      setActiveIndex(findActiveMark(next.marks, audio.currentTime * 1000));
-    });
-    audio.addEventListener("loadedmetadata", () => {
-      if (next.durationMs === null && Number.isFinite(audio.duration)) {
-        setDurationSec(audio.duration);
-      }
-    });
-    audio.addEventListener("ended", () => {
-      cancelAnimationFrame(frame);
-      audio.currentTime = 0;
-      setActiveIndex(-1);
-      setPlayhead(0);
-      setStatus("idle");
-    });
-    audioRef.current = audio;
-    return audio;
-  };
+  const activeHeading = activeHeadingIndex(outline, playback.activeIndex);
 
   const trimmed = text.trim();
   const wordCount = useMemo(
@@ -299,30 +73,35 @@ export function Reader() {
   );
   const overLimit = trimmed.length > MAX_TEXT_LENGTH;
   const nearLimit = trimmed.length > MAX_TEXT_LENGTH * 0.9;
-  const isSaved = synthesis?.sourceId != null;
+  const isSaved = reading?.sourceId != null;
+
+  /** Swap in `next` as the current reading and start playing it. */
+  const startReading = (next: ActiveReading) => {
+    if (reading) URL.revokeObjectURL(reading.audioSrc);
+    setReading(next);
+    setMode("read");
+    playback.start(next);
+  };
 
   const handleListen = async () => {
     setError(null);
     if (trimmed.length === 0 || overLimit) return;
-    if (synthesis && synthesis.text === trimmed && audioRef.current) {
+    if (reading && reading.text === trimmed) {
       setMode("read");
-      play(audioRef.current);
+      playback.resume();
       return;
     }
-    setStatus("loading");
+    playback.beginLoading();
     try {
-      const reading = await synthesizeReading(trimmed, setProgress);
-      const next: Synthesis = {
-        ...reading,
-        audioSrc: URL.createObjectURL(reading.audio),
-        segments: buildSegments(reading.text, reading.marks),
+      const synthesized = await synthesizeReading(trimmed, setProgress);
+      startReading({
+        ...synthesized,
+        audioSrc: URL.createObjectURL(synthesized.audio),
+        segments: buildSegments(synthesized.text, synthesized.marks),
         sourceId: null,
-      };
-      replaceSynthesis(next);
-      setMode("read");
-      play(attachAudio(next));
+      });
     } catch (caught) {
-      setStatus("idle");
+      playback.cancelLoading();
       setError(
         caught instanceof Error ? caught.message : "Speech synthesis failed.",
       );
@@ -331,74 +110,40 @@ export function Reader() {
     }
   };
 
-  const handlePlayPause = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (status === "playing") audio.pause();
-    else play(audio);
-  };
-
-  const handleSeek = (seconds: number) => {
-    const audio = audioRef.current;
-    const marks = synthesis?.marks;
-    if (!audio || !marks) return;
-    const upper = durationSec > 0 ? durationSec : seconds;
-    const clamped = Math.min(Math.max(seconds, 0), upper);
-    audio.currentTime = clamped;
-    setPlayhead(quantize(clamped));
-    setActiveIndex(findActiveMark(marks, clamped * 1000));
-  };
-
-  const handleWordClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (!(event.target instanceof Element)) return;
-    const span = event.target.closest("[data-mark]");
-    if (!(span instanceof HTMLElement)) return;
-    const mark = synthesis?.marks[Number(span.dataset.mark)];
+  const handleWordSelect = (markIndex: number) => {
+    const mark = reading?.marks[markIndex];
     if (!mark) return;
-    handleSeek(mark.time / 1000);
-    if (status !== "playing" && audioRef.current) play(audioRef.current);
+    playback.seek(mark.time / 1000);
+    if (playback.status !== "playing") playback.resume();
   };
 
   const handleJumpToHeading = (heading: OutlineHeading) => {
-    const mark = synthesis?.marks[heading.markIndex];
+    const mark = reading?.marks[heading.markIndex];
     if (!mark) return;
-    suppressAutoScrollRef.current = true;
-    handleSeek(mark.time / 1000);
-    const word = wordsRef.current?.querySelector(
-      `[data-mark="${heading.markIndex}"]`,
-    );
-    word?.scrollIntoView({ block: "start", behavior: "smooth" });
+    // The heading's own block:"start" scroll must win over auto-follow.
+    follow.suppressNextAutoScroll();
+    playback.seek(mark.time / 1000);
+    wordElement(wordsRef.current, heading.markIndex)?.scrollIntoView({
+      block: "start",
+      behavior: "smooth",
+    });
   };
 
   const handleEdit = () => {
-    const audio = audioRef.current;
-    if (audio) {
-      audio.pause();
-      audio.currentTime = 0;
-    }
-    setActiveIndex(-1);
-    setPlayhead(0);
-    setStatus("idle");
+    playback.stop();
     setMode("edit");
   };
 
-  const handleCycleRate = () => {
-    const index = PLAYBACK_RATES.indexOf(rate);
-    setRate(PLAYBACK_RATES[(index + 1) % PLAYBACK_RATES.length]);
-  };
-
   const handleSave = async () => {
-    if (!synthesis || synthesis.sourceId !== null) return;
+    if (!reading || reading.sourceId !== null) return;
     setError(null);
     try {
-      await requestPersistentStorage();
-      const meta = await saveReading(
-        synthesis.text,
-        synthesis.marks,
-        synthesis.audio,
+      const meta = await library.save(
+        reading.text,
+        reading.marks,
+        reading.audio,
       );
-      setSynthesis({ ...synthesis, sourceId: meta.id });
-      setSaved((previous) => [meta, ...previous]);
+      setReading({ ...reading, sourceId: meta.id });
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "Could not save reading.",
@@ -413,7 +158,8 @@ export function Reader() {
       if (audio === null) {
         throw new Error("The audio for this reading is missing.");
       }
-      const next: Synthesis = {
+      setText(meta.text);
+      startReading({
         text: meta.text,
         audio,
         audioSrc: URL.createObjectURL(audio),
@@ -421,11 +167,7 @@ export function Reader() {
         segments: buildSegments(meta.text, meta.marks),
         durationMs: null,
         sourceId: meta.id,
-      };
-      replaceSynthesis(next);
-      setText(meta.text);
-      setMode("read");
-      play(attachAudio(next));
+      });
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "Could not load reading.",
@@ -436,10 +178,9 @@ export function Reader() {
   const handleDelete = async (id: string) => {
     setError(null);
     try {
-      await deleteReading(id);
-      setSaved((previous) => previous.filter((meta) => meta.id !== id));
-      if (synthesis?.sourceId === id) {
-        setSynthesis({ ...synthesis, sourceId: null });
+      await library.remove(id);
+      if (reading?.sourceId === id) {
+        setReading({ ...reading, sourceId: null });
       }
     } catch (caught) {
       setError(
@@ -448,41 +189,11 @@ export function Reader() {
     }
   };
 
-  /*
-   * Global shortcuts in read mode: Space play/pause, ←/→ seek ±5s,
-   * E back to edit. Skipped while a control, field, or dialog has focus
-   * so native behavior (button activation, typing) is untouched.
-   */
-  useEffect(() => {
-    if (mode !== "read") return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      const target = event.target;
-      if (
-        target instanceof HTMLElement &&
-        target.closest(
-          "input, textarea, select, button, [role='slider'], [role='dialog'], [contenteditable='true']",
-        )
-      ) {
-        return;
-      }
-      const audio = audioRef.current;
-      if (event.key === " ") {
-        event.preventDefault();
-        if (!audio) return;
-        if (status === "playing") audio.pause();
-        else play(audio);
-      } else if (event.key === "ArrowRight" && audio) {
-        event.preventDefault();
-        handleSeek(audio.currentTime + 5);
-      } else if (event.key === "ArrowLeft" && audio) {
-        event.preventDefault();
-        handleSeek(audio.currentTime - 5);
-      } else if (event.key === "e" || event.key === "E") {
-        handleEdit();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+  useReaderShortcuts({
+    enabled: mode === "read",
+    onPlayPause: playback.playPause,
+    onSeekBy: playback.seekBy,
+    onEdit: handleEdit,
   });
 
   return (
@@ -493,8 +204,8 @@ export function Reader() {
         </h1>
         <div className="flex items-center gap-1">
           <Library
-            readings={saved}
-            activeId={synthesis?.sourceId ?? null}
+            readings={library.readings}
+            activeId={reading?.sourceId ?? null}
             onLoad={(meta) => void handleLoad(meta)}
             onDelete={(id) => void handleDelete(id)}
           />
@@ -514,7 +225,7 @@ export function Reader() {
             aria-label="Text to read aloud"
             autoFocus
             className="placeholder:text-content-muted min-h-[55vh] flex-1 resize-none rounded-none border-0 bg-transparent p-0 text-lg leading-8 shadow-none focus-visible:border-transparent focus-visible:ring-0 disabled:bg-transparent md:text-lg dark:bg-transparent"
-            disabled={status === "loading"}
+            disabled={playback.status === "loading"}
           />
           <div className="text-content-muted flex min-h-5 items-center gap-3 text-sm tabular-nums">
             {trimmed.length > 0 && (
@@ -552,63 +263,42 @@ export function Reader() {
               {error}
             </p>
           )}
-          <div
-            ref={wordsRef}
-            onClick={handleWordClick}
-            aria-live="off"
-            className="reading-surface relative isolate text-lg leading-8 whitespace-pre-wrap sm:text-xl sm:leading-9"
-          >
-            <div
-              ref={pillRef}
-              aria-hidden
-              className="reading-pill pointer-events-none absolute top-0 left-0 -z-10"
-            />
-            {synthesis?.segments.map((segment, index) =>
-              segment.markIndex === null ? (
-                <span
-                  key={index}
-                  className={cn(
-                    "transition-colors duration-150",
-                    segment.sentenceIndex === activeSentence &&
-                      "bg-hl-sentence",
-                  )}
-                >
-                  {renderSegmentContent(segmentRuns[index], segment.text)}
-                </span>
-              ) : (
-                <span
-                  key={index}
-                  data-mark={segment.markIndex}
-                  data-active={segment.markIndex === activeIndex || undefined}
-                  className={cn(
-                    "transition-colors duration-150",
-                    segment.sentenceIndex === activeSentence &&
-                      "bg-hl-sentence",
-                    segment.markIndex === activeIndex &&
-                      "text-hl-active-foreground",
-                  )}
-                >
-                  {renderSegmentContent(segmentRuns[index], segment.text)}
-                </span>
-              ),
-            )}
-          </div>
+          {!follow.playheadVisible && playback.activeIndex >= 0 && (
+            <div className="pointer-events-none fixed inset-x-0 bottom-24 z-40 flex justify-center px-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={follow.scrollToPlayhead}
+                className="animate-in fade-in slide-in-from-bottom-2 border-edge-subtle bg-surface-elevated/90 pointer-events-auto shadow-md backdrop-blur-md duration-200"
+              >
+                {follow.playheadBelow ? <ArrowDown /> : <ArrowUp />}
+                Back to playhead
+              </Button>
+            </div>
+          )}
+          <ReadingSurface
+            segments={reading?.segments ?? []}
+            markdown={markdown}
+            activeIndex={playback.activeIndex}
+            containerRef={wordsRef}
+            onWordSelect={handleWordSelect}
+          />
         </section>
       )}
 
       <PlayerDock
         mode={mode}
-        status={status}
+        status={playback.status}
         progress={progress}
         canListen={trimmed.length > 0 && !overLimit}
-        playheadSec={playhead}
-        durationSec={durationSec}
-        rate={rate}
+        playheadSec={playback.playhead}
+        durationSec={playback.durationSec}
+        rate={playback.rate}
         isSaved={isSaved}
         onListen={() => void handleListen()}
-        onPlayPause={handlePlayPause}
-        onSeek={handleSeek}
-        onCycleRate={handleCycleRate}
+        onPlayPause={playback.playPause}
+        onSeek={playback.seek}
+        onCycleRate={playback.cycleRate}
         onSave={() => void handleSave()}
         onEdit={handleEdit}
       />

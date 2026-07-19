@@ -121,9 +121,6 @@
   --color-content-secondary: oklch(var(--text-secondary));
   --color-content-muted: oklch(var(--text-muted));
   --color-content-inverse: oklch(var(--text-inverse));
-  --color-highlight: oklch(var(--highlight));
-  --color-highlight-foreground: oklch(var(--highlight-foreground));
-
   /* Active highlight mode — resolved by [data-highlight], see styles/highlights.css */
   --color-hl-active: var(--highlight-active);
   --color-hl-active-foreground: var(--highlight-active-foreground);

@@ -60,11 +60,28 @@ export interface SynthesizedReading {
   durationMs: number;
 }
 
+/** The reading currently loaded in the player. */
+export interface ActiveReading {
+  text: string;
+  audio: Blob;
+  /** Object URL for `audio` — revoked when the reading is replaced. */
+  audioSrc: string;
+  marks: SpeechMark[];
+  segments: WordSegment[];
+  /** Exact decoded duration; null for library loads (metadata fills in). */
+  durationMs: number | null;
+  /** Library id when this reading is saved, null otherwise. */
+  sourceId: string | null;
+}
+
 /** A run of synthesized text — a spoken word (with its mark index) or filler. */
 export interface WordSegment {
   text: string;
   markIndex: number | null;
-  /** 0-based index of the sentence containing this segment's first character. */
+  /**
+   * 0-based index of the sentence containing this segment's first
+   * character; -1 for a filler's line-break run, which is never tinted.
+   */
   sentenceIndex: number;
   /** Char offset of this segment's first character in the full text. */
   charStart: number;
@@ -91,9 +108,31 @@ export interface MarkdownHeading {
   charEnd: number;
 }
 
+/**
+ * A code section's full char range (backticks/fences included). Each
+ * section renders as one wrapper element and highlights as one unit.
+ */
+export interface CodeRange {
+  start: number;
+  end: number;
+  /** Fenced multi-line block (```) vs inline span (`). */
+  block: boolean;
+}
+
 export interface MarkdownAnnotations {
   decorations: MarkdownDecoration[];
   headings: MarkdownHeading[];
+  /** Sorted by start; ranges never overlap. */
+  codeRanges: CodeRange[];
+}
+
+/** A run of consecutive segments — plain, or wrapped as one code section. */
+export interface SegmentGroup {
+  /** Index into MarkdownAnnotations.codeRanges, or null for plain runs. */
+  codeIndex: number | null;
+  /** Segment index range [from, to). */
+  from: number;
+  to: number;
 }
 
 /** A heading resolved to its first spoken word, clickable in the outline. */

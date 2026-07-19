@@ -51,18 +51,23 @@ export function isSynthesizeResponse(
 const SENTENCE_TERMINATORS = new Set([".", "!", "?", "\n"]);
 
 /**
- * Char offsets where each sentence begins. A sentence ends at a run of
- * terminators (./!/?/newline); the next non-terminator, non-whitespace
- * character starts a new one, so trailing spaces stay with the previous
- * sentence. Abbreviations are knowingly treated as sentence ends.
+ * Char offsets where each sentence begins. A sentence ends at ./!/?
+ * only when the terminator is followed by whitespace — "3.5",
+ * "Node.js", and "U.S." stay inside their sentence, so the tint never
+ * jumps mid-sentence. Newlines always terminate. The next
+ * non-whitespace character starts the new sentence, so trailing spaces
+ * stay with the previous one.
  */
 function sentenceStarts(text: string): number[] {
   const starts = [0];
   let afterTerminator = false;
   for (let index = 0; index < text.length; index++) {
     const char = text[index];
-    if (SENTENCE_TERMINATORS.has(char)) {
+    if (char === "\n") {
       afterTerminator = true;
+    } else if (SENTENCE_TERMINATORS.has(char)) {
+      const next = text[index + 1];
+      if (next === undefined || /\s/.test(next)) afterTerminator = true;
     } else if (afterTerminator && /\S/.test(char)) {
       starts.push(index);
       afterTerminator = false;
@@ -79,8 +84,15 @@ function sentenceStarts(text: string): number[] {
  */
 function chunkCut(window: string): number {
   const floor = MAX_CHUNK_LENGTH / 2;
-  for (let index = window.length - 1; index >= floor; index--) {
-    if (SENTENCE_TERMINATORS.has(window[index])) return index + 1;
+  // Same rule as sentenceStarts: ./!/? only end a sentence before
+  // whitespace, so a cut can never land inside "3.5" or "Node.js".
+  for (let index = window.length - 2; index >= floor; index--) {
+    if (
+      window[index] === "\n" ||
+      (SENTENCE_TERMINATORS.has(window[index]) && /\s/.test(window[index + 1]))
+    ) {
+      return index + 1;
+    }
   }
   for (let index = window.length - 1; index >= floor; index--) {
     if (/\s/.test(window[index])) return index + 1;
@@ -142,19 +154,64 @@ export function buildSegments(
   };
 
   const segments: WordSegment[] = [];
+
+  /*
+   * Fillers are split around their line-break run, which is emitted
+   * with sentenceIndex -1: pre-wrap paints inline backgrounds on
+   * preserved newlines and spaces, so a tinted filler spanning a
+   * paragraph break draws sentence-tint squares onto the empty lines
+   * below it. The run swallows ALL whitespace touching the newlines —
+   * trailing spaces before the break and the next line's indentation
+   * (which sentenceAt assigns to the previous sentence) would paint
+   * the same squares.
+   */
+  const pushFiller = (from: number, to: number) => {
+    if (from >= to) return;
+    const value = text.slice(from, to);
+    const first = value.indexOf("\n");
+    if (first === -1) {
+      segments.push({
+        text: value,
+        markIndex: null,
+        sentenceIndex: sentenceAt(from),
+        charStart: from,
+      });
+      return;
+    }
+    let breakStart = first;
+    while (breakStart > 0 && /\s/.test(value[breakStart - 1])) breakStart--;
+    let breakEnd = value.lastIndexOf("\n") + 1;
+    while (breakEnd < value.length && /\s/.test(value[breakEnd])) breakEnd++;
+    if (breakStart > 0) {
+      segments.push({
+        text: value.slice(0, breakStart),
+        markIndex: null,
+        sentenceIndex: sentenceAt(from),
+        charStart: from,
+      });
+    }
+    segments.push({
+      text: value.slice(breakStart, breakEnd),
+      markIndex: null,
+      sentenceIndex: -1,
+      charStart: from + breakStart,
+    });
+    if (breakEnd < value.length) {
+      segments.push({
+        text: value.slice(breakEnd),
+        markIndex: null,
+        sentenceIndex: sentenceAt(from + breakEnd),
+        charStart: from + breakEnd,
+      });
+    }
+  };
+
   let cursor = 0;
   marks.forEach((mark, markIndex) => {
     const start = byteToChar.get(mark.start);
     const end = byteToChar.get(mark.end);
     if (start === undefined || end === undefined || start < cursor) return;
-    if (start > cursor) {
-      segments.push({
-        text: text.slice(cursor, start),
-        markIndex: null,
-        sentenceIndex: sentenceAt(cursor),
-        charStart: cursor,
-      });
-    }
+    pushFiller(cursor, start);
     segments.push({
       text: text.slice(start, end),
       markIndex,
@@ -163,14 +220,7 @@ export function buildSegments(
     });
     cursor = end;
   });
-  if (cursor < text.length) {
-    segments.push({
-      text: text.slice(cursor),
-      markIndex: null,
-      sentenceIndex: sentenceAt(cursor),
-      charStart: cursor,
-    });
-  }
+  pushFiller(cursor, text.length);
   return segments;
 }
 
@@ -180,6 +230,17 @@ export function buildSentenceByMark(segments: WordSegment[]): number[] {
   for (const segment of segments) {
     if (segment.markIndex !== null) {
       byMark[segment.markIndex] = segment.sentenceIndex;
+    }
+  }
+  return byMark;
+}
+
+/** Dense markIndex → charStart lookup, e.g. for code-range hit tests. */
+export function buildCharStartByMark(segments: WordSegment[]): number[] {
+  const byMark: number[] = [];
+  for (const segment of segments) {
+    if (segment.markIndex !== null) {
+      byMark[segment.markIndex] = segment.charStart;
     }
   }
   return byMark;
