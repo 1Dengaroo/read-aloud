@@ -579,6 +579,7 @@ export function Reader() {
                 <span
                   key={index}
                   data-mark={segment.markIndex}
+                  data-active={segment.markIndex === activeIndex || undefined}
                   className={cn(
                     "transition-colors duration-150",
                     segment.sentenceIndex === activeSentence &&

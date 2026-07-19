@@ -37,6 +37,16 @@
 }
 
 /*
+ * The sliding pill paints behind span backgrounds (-z-10), so the code
+ * chip would mask it and leave the active word's highlight-foreground
+ * text on the chip's own surface — unreadable in dark themes. While a
+ * code word is being spoken, drop the chip so the pill shows through.
+ */
+[data-mark][data-active] .md-code {
+  background-color: transparent;
+}
+
+/*
  * Headings are inline runs inside the pre-wrap flow; a relative
  * line-height lets their line box grow past the container's fixed
  * reading leading instead of overlapping neighbors.
